@@ -1,41 +1,43 @@
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
+using UnityEngine.XR.Interaction.Toolkit.Interactors;
 
 public class RigidbodyRestorer : MonoBehaviour
 {
-    private Rigidbody rb;
-    private UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable grabInteractable;
+    private XRSocketInteractor socketInteractor;
 
     void Awake()
     {
-        rb = GetComponent<Rigidbody>();
-        grabInteractable = GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
-        
-        if (grabInteractable != null)
+        socketInteractor = GetComponent<XRSocketInteractor>();
+
+        if (socketInteractor != null)
         {
-            // Suscribe la función al evento de cuando el objeto es soltado (deseleccionado)
-            grabInteractable.selectExited.AddListener(OnSelectExit);
+            // Suscribirse al evento que se dispara cuando una tubería es sacada del socket
+            socketInteractor.selectExited.AddListener(RestorePhysics);
         }
     }
 
-    private void OnSelectExit(SelectExitEventArgs args)
+    private void RestorePhysics(SelectExitEventArgs args)
     {
-        // Esta función se ejecuta JUSTO después de que el objeto es soltado.
-        // Forzamos la desactivación de Is Kinematic y reactivamos la gravedad.
-        if (rb != null)
+        // El objeto que salió del socket es el Interactable (la tubería)
+        if (args.interactableObject.transform.TryGetComponent(out Rigidbody rb))
         {
-            // Espera un frame para que el XRGrabInteractable complete su lógica de soltar
-            StartCoroutine(RestoreRigidbodySettings());
-        }
-    }
+            // 1. Descongelar el Rigidbody
+            rb.isKinematic = false;
+            rb.useGravity = true;
 
-    System.Collections.IEnumerator RestoreRigidbodySettings()
-    {
-        // Espera un frame. Vital para que funcione con el XRIT.
-        yield return null; 
-        
-        // ******* ¡SOLUCIÓN! *******
-        rb.isKinematic = false;
-        rb.useGravity = true;
+            // 2. Reactivar el agarre (XRGrabInteractable)
+            if (args.interactableObject.transform.TryGetComponent(out XRGrabInteractable grab))
+            {
+                grab.enabled = true;
+            }
+
+            // 3. (Opcional) Desactivar el socket de la cadena si es un socket libre
+            if (gameObject.GetComponent<XRSocketInteractor>() != null && gameObject.name.Contains("SocketLibre"))
+            {
+                gameObject.SetActive(false);
+            }
+        }
     }
 }
