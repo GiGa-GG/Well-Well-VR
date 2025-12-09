@@ -19,10 +19,7 @@ public class SequencePuzzleController : MonoBehaviour
 
     // Diccionario para almacenar el color original de CADA SÍMBOLO de texto
     private Dictionary<GameObject, Color32> originalTextColors = new Dictionary<GameObject, Color32>();
-
-    // Referencia al controlador de progreso
-    // Asegúrate de DESCOMENTAR esta línea y conectar el componente en el Inspector
-    // public PuzleProgresoController progressController;
+    public GameManager gameManager;
 
     void Start()
     {
@@ -77,21 +74,26 @@ public class SequencePuzzleController : MonoBehaviour
         {
             if (playerSequence[i] != correctSequence[i])
             {
-                // SECUENCIA INCORRECTA: Flashea ROJO
+                // SECUENCIA INCORRECTA
                 StartCoroutine(FlashAllButtons(wrongColor, 0.5f));
                 ResetSequence();
                 return;
             }
         }
 
-        // SECUENCIA CORRECTA: Flashea VERDE
+        // --- SECUENCIA CORRECTA ---
         StartCoroutine(FlashAllButtons(correctColor, 0.5f));
-        // progressController.PuzleCompletado(); // Descomentar al finalizar
+        
+        // AQUÍ VA LA LLAMADA AL MANAGER
+        if (gameManager != null)
+        {
+            gameManager.RegistrarPuzleCompletado();
+        }
 
-        // Desactiva los botones para que no se puedan volver a usar
+        // Desactiva los botones (el código que ya tenías)
         foreach (GameObject btn in symbolButtons)
         {
-            UnityEngine.XR.Interaction.Toolkit.Interactables.XRBaseInteractable interactable = btn.GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRBaseInteractable>();
+            var interactable = btn.GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRBaseInteractable>();
             if (interactable != null)
             {
                 interactable.enabled = false;
