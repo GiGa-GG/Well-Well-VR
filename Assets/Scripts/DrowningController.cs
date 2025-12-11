@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class DrowningController : MonoBehaviour
 {
@@ -16,6 +17,13 @@ public class DrowningController : MonoBehaviour
 
     private float currentDrowningTime = 0f;
 
+    private bool wasSubmerged = false;
+
+    [Header("Audio de Ahogamiento")]
+    public AudioSource drowningAudioSource; // AudioSource en la Cámara VR
+    public AudioClip drowningClip;         // Sonido de burbujas (debe ser loop)
+    public AudioClip breathingClip;        // Sonido de respiración al salir del agua
+
     void Update()
     {
         // Altura del agua
@@ -23,29 +31,65 @@ public class DrowningController : MonoBehaviour
         // Altura de la cabeza del jugador
         float playerHeadHeight = transform.position.y;
 
-        // 1. Comprobación de Submersión
-        if (playerHeadHeight < waterHeight)
-        {
-            // Bajo el agua: el contador de ahogamiento sube
-            currentDrowningTime += Time.deltaTime;
-        }
-        else
-        {
-            // Fuera del agua: el contador baja (la recuperación es más rápida)
-            currentDrowningTime = Mathf.Max(0f, currentDrowningTime - Time.deltaTime * 3);
-        }
+        bool isSubmerged = (playerHeadHeight < waterHeight);
 
+        if (isSubmerged)
+        {
+            // A. ESTANDO SUMERGIDO: Control de tiempo y audio ON
+            
+            // Incremento de tiempo (solo una vez)
+            currentDrowningTime += Time.deltaTime; 
+
+            // 1. Audio: Si el clip no está asignado, lo asignamos y empezamos a reproducir
+            if (drowningAudioSource.clip != drowningClip)
+            {
+                drowningAudioSource.clip = drowningClip;
+                drowningAudioSource.loop = true;
+            }
+            if (!drowningAudioSource.isPlaying)
+            {
+                drowningAudioSource.Play();
+            }
+            
+            // 2. Registramos que ESTAMOS sumergidos AHORA
+            wasSubmerged = true; 
+        }
+        else // Si NO está sumergido (en el aire)
+        {
+            // B. ESTANDO FUERA: Control de tiempo y transición de audio
+            
+            // 1. Lógica de Recuperación de Tiempo
+            currentDrowningTime = Mathf.Max(0f, currentDrowningTime - Time.deltaTime * 3);
+            
+            // 2. DETECCIÓN DE LA TRANSICIÓN (wasSubmerged == true)
+            if (wasSubmerged)
+            {
+                // Solo se ejecuta en el PRIMER FRAME fuera del agua
+                
+                // Detener el sonido de ahogamiento (burbujas)
+                drowningAudioSource.Stop();
+                
+                // Reproducir el sonido de respiración UNA SOLA VEZ
+                if (breathingClip != null)
+                {
+                    drowningAudioSource.PlayOneShot(breathingClip);
+                }
+
+                // Reiniciamos la bandera, la transición ha ocurrido
+                wasSubmerged = false;
+            }
+        }
+        
+        // 3. --- LÓGICA DE VISUALES Y VICTORIA/DERROTA (Global) ---
+        
         // Asegurarse de que el contador no exceda el límite
         currentDrowningTime = Mathf.Clamp(currentDrowningTime, 0f, drowningTimeLimit);
 
-        // 2. Control del Efecto Visual (Oscurecimiento)
-        // Calcula el Alpha basado en el porcentaje de tiempo sumergido
+        // Controlar el Alpha del Overlay (El oscurecimiento)
         float targetAlpha = currentDrowningTime / drowningTimeLimit;
-
-        // Mueve el Alpha suavemente hacia el valor objetivo (oscurecer/aclarar)
         drowningOverlay.alpha = Mathf.MoveTowards(drowningOverlay.alpha, targetAlpha, fadeSpeed * Time.deltaTime);
 
-        // 3. Condición de Pérdida
+        // Condición de Pérdida
         if (currentDrowningTime >= drowningTimeLimit)
         {
             GameOver();
@@ -59,6 +103,8 @@ public class DrowningController : MonoBehaviour
 
         // Detener la subida del agua
         waterPlane.GetComponent<WaterRisingController>().enabled = false;
+
+        SceneManager.LoadScene("LoseScene");
 
         // Aquí iría la lógica para cargar el menú de Game Over o reiniciar.
         // Time.timeScale = 0f; 

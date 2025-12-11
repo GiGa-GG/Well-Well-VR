@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.SceneManagement;
+using System.Collections;
 
 public class GameManager : MonoBehaviour
 {
@@ -14,6 +16,11 @@ public class GameManager : MonoBehaviour
     private Vector3 posicionObjetivoCuerda;
     public bool pipesPuzzleCompleted = false;
 
+    [Header("Audio")]
+    public AudioSource sfxSource;
+    public AudioClip puzleCompletadoClip;
+
+    public bool valvePuzzleCompleted = false;
     void Start()
     {
         if (cuerda != null)
@@ -35,20 +42,32 @@ public class GameManager : MonoBehaviour
         puzlesResueltos++;
         Debug.Log($"Puzle completado! ({puzlesResueltos}/{totalPuzlesEnEscena})");
 
+        if (sfxSource != null && puzleCompletadoClip != null)
+        {
+            sfxSource.PlayOneShot(puzleCompletadoClip);
+        }
+
         // Calculamos la nueva posición hacia abajo
         posicionObjetivoCuerda.y -= distanciaBajadaPorPuzle;
 
+        Debug.Log(puzlesResueltos >= totalPuzlesEnEscena);
+
         if (puzlesResueltos >= totalPuzlesEnEscena)
         {
+            Debug.Log("¡TODOS LOS PUZLES COMPLETADOS! ¡HAS GANADO!");
             GanarJuego();
         }
     }
 
     void GanarJuego()
     {
-        Debug.Log("¡VICTORIA! El jugador puede escapar.");
-        // Aquí puedes detener el agua, activar un sonido de éxito 
-        // o permitir que el jugador toque la cuerda para terminar.
+        Debug.Log("¡VICTORIA! Esperando para cargar escena...");
+        // Detener la subida del agua si es necesario
+
+        //yield return new WaitForSeconds(2f); // Pausa de 2 segundos
+        Debug.Log("Llendo a la escena");
+        
+        SceneManager.LoadScene("WinScene"); // Cargar escena de victoria
     }
 
     [Header("Chequeo de Tuberías")]
